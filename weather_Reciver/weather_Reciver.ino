@@ -7,12 +7,20 @@
 // Author: Mike McCauley (mikem@airspayce.com)
 // Copyright (C) 2008 Mike McCauley
 // $Id: receiver.pde,v 1.3 2009/03/30 00:07:24 mikem Exp $
+// 
+// Modification History:
+// Russell Johnson		08/04/2018	Modified startup information and renamed in english non-english terms.  Converted to F from C.
+// Russell Johnson		08/12/2018	Adding RTC and required code.
+
 #include <VirtualWire.h>
 #include <stdio.h>
 #include <string.h>
 #include <LiquidCrystal.h>
+#include <RTClib.h>
 
 double Temp;
+RTC_DS1307 RTC;
+
 
 LiquidCrystal lcd(12, 10, 5, 4, 3, 2); //LCD Pins
 int LCDpin =9;  //LCD backlight Pin
@@ -23,6 +31,10 @@ int Humid; // Value
 String TempC; //Temp in C
 String Humidity; //humidity
 String Pressure;  //pressure
+String outputTime; //Time
+int hr24Time; // 24 hour clock reading
+int hr12Time; // 12 hour conversion
+String ampm; // 12 hour am or pm setting.
 
 // Variable to store temp in F
 String TempF; // Temp in F
@@ -31,8 +43,18 @@ void setup()
 {
   Serial.begin(9600); // Debugging only
   Serial.println("setup");
-
-
+  if (! RTC.begin())
+  {
+    Serial.println("Couldn't find RTC");
+    while (1);
+  }
+  RTC.adjust(DateTime(__DATE__, __TIME__));
+  if (! RTC.isrunning()) {
+    Serial.println("RTC is NOT running!");
+    // This will reflect the time that your sketch was compiled
+    //RTC.adjust(DateTime(__DATE__, __TIME__));
+    //RTC.adjust(DateTime(2018,8,12,18,48,0));
+  }
   ////Setting pins for backlight
   pinMode(pir, INPUT);
   pinMode(LCDpin, OUTPUT);
@@ -76,6 +98,53 @@ void loop()
   //The Sensitivity  and duration is adjusted ON the PIR
   digitalWrite(LCDpin, digitalRead(pir));
 
+  // Get time from RTC and assign to variable for display.
+  DateTime now = RTC.now();
+  outputTime = now.month();
+  outputTime = outputTime + "/";
+  outputTime = outputTime + now.day();
+  outputTime = outputTime + '/';
+  outputTime = outputTime + now.year();
+  outputTime = outputTime + ' ';
+  // Correct for 12 hour clock over 24 hour time.
+  hr24Time = now.hour();
+  if (hr24Time > 12)
+    {
+        hr12Time = hr24Time - 12;
+        ampm = "PM";
+    }
+  else
+  {
+    hr12Time = hr24Time;
+    if (hr24Time == 12)
+    {
+      ampm = "PM";
+    }
+    else if (hr24Time == 0)
+    {
+      hr12Time = 12;
+      ampm = "AM";
+    }
+    else
+    {
+      ampm = "AM";
+    }
+  }
+  outputTime = outputTime + hr12Time;
+  outputTime = outputTime + ':';
+  // Correct for missing 0 if time is less than 10.
+  if (now.minute() < 10)
+  {
+    outputTime = outputTime + '0';
+    outputTime = outputTime + now.minute();
+  }
+  else 
+  {
+    outputTime = outputTime + now.minute();
+  }
+  outputTime = outputTime + ' ' + ampm;
+  //Serial.println(outputTime);
+  
   ////Receiving  DATA
   uint8_t buf[VW_MAX_MESSAGE_LEN];
   uint8_t buflen = VW_MAX_MESSAGE_LEN;
@@ -135,13 +204,19 @@ void SetScreen()
   if (Humidity != "")
   {
     lcd.setCursor(0, 1); //Set Cursos
-    lcd.print(((String)"    Humidity = " + Humidity +  "%")); //Writes text with received value
+    lcd.print(((String)"  Humidity = " + Humidity +  "%")); //Writes text with received value
   }
 
   if (Pressure != "")
   {
     lcd.setCursor(0, 2); //Set Cursos
-    lcd.print(((String)"  Pressure = " + Pressure +  " HPA"));//Writes text with received value
+    lcd.print(((String)"  Pressure = " + Pressure));//Writes text with received value
+  }
+  
+  if (outputTime != "")
+  {
+  lcd.setCursor(0,3); //Set Cursor
+	lcd.print("  " + outputTime); //Write time from RTC
   }
   lcd.display();
 }

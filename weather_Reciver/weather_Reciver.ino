@@ -9,8 +9,9 @@
 // $Id: receiver.pde,v 1.3 2009/03/30 00:07:24 mikem Exp $
 // 
 // Modification History:
-// Russell Johnson		08/04/2018	Modified startup information and renamed in english non-english terms.  Converted to F from C.
-// Russell Johnson		08/12/2018	Adding RTC and required code.
+// Russell Johnson    08/04/2018  Modified startup information and renamed in english non-english terms.  Converted to F from C.
+// Russell Johnson    08/12/2018  Adding RTC and required code.
+// Russell Johnson    02/10/2020  Removed PIR as it was not working properly and I didn't care about the feature.  
 
 #include <VirtualWire.h>
 #include <stdio.h>
@@ -19,13 +20,12 @@
 #include <RTClib.h>
 
 double Temp;
-RTC_DS1307 RTC;
+DS1307 RTC;
 
 
 LiquidCrystal lcd(12, 10, 5, 4, 3, 2); //LCD Pins
 int LCDpin =9;  //LCD backlight Pin
 int Humid; // Value
-#define pir A0 //Pin for the PIR input
 
 //Varaible to store the recoverd values
 String TempC; //Temp in C
@@ -48,16 +48,13 @@ void setup()
     Serial.println("Couldn't find RTC");
     while (1);
   }
-  RTC.adjust(DateTime(__DATE__, __TIME__));
+  //RTC.adjust(DateTime(__DATE__, __TIME__));
   if (! RTC.isrunning()) {
     Serial.println("RTC is NOT running!");
     // This will reflect the time that your sketch was compiled
     //RTC.adjust(DateTime(__DATE__, __TIME__));
-    //RTC.adjust(DateTime(2018,8,12,18,48,0));
+    //RTC.adjust(DateTime(2020,9,2,17,42,0));
   }
-  ////Setting pins for backlight
-  pinMode(pir, INPUT);
-  pinMode(LCDpin, OUTPUT);
 
   //LCD
   lcd.begin(20, 4); //Setting rows an colums
@@ -77,9 +74,6 @@ void setup()
   //Show on Screen, if this isnt called, screen would be empty
   lcd.display(); 
 
-  //Set back color to full brightness
-  digitalWrite(LCDpin,255);
-
   //Wait a seccond
   delay(1000);
 
@@ -94,10 +88,6 @@ void setup()
 
 void loop()
 {
-  //IF PIR sensor if HIGH, LCD backlight is on
-  //The Sensitivity  and duration is adjusted ON the PIR
-  digitalWrite(LCDpin, digitalRead(pir));
-
   // Get time from RTC and assign to variable for display.
   DateTime now = RTC.now();
   outputTime = now.month();
@@ -216,8 +206,7 @@ void SetScreen()
   if (outputTime != "")
   {
   lcd.setCursor(0,3); //Set Cursor
-	lcd.print("  " + outputTime); //Write time from RTC
+  lcd.print("  " + outputTime); //Write time from RTC
   }
   lcd.display();
 }
-
